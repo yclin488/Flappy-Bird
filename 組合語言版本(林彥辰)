@@ -1,0 +1,136 @@
+.386
+.model flat, stdcall
+.stack 4096
+ExitProcess PROTO, dwExitCode:DWORD
+
+.DATA
+screen_width    DWORD 50
+screen_height   DWORD 20
+obstacle_gap    DWORD 6
+bird_y          DWORD 10
+obstacle_x      DWORD 50
+gap_y           DWORD 5
+score           DWORD 0
+game_over       DWORD 0
+
+bird_char       BYTE "-'o'-", 0
+obstacle_char   BYTE "|", 0
+space_char      BYTE " ", 0
+newline_char    BYTE 0DH, 0AH, 0
+score_label     BYTE "Score: ", 0
+game_over_msg   BYTE "Game Over! Final Score: ", 0
+
+.CODE
+main PROC
+    CALL InitializeGame
+
+GameLoop:
+    CALL DrawScreen
+    CALL UpdateObstacle
+    CALL CheckCollision
+    CMP game_over, 1
+    JE EndGame
+
+    CALL Delay
+    JMP GameLoop
+
+EndGame:
+    LEA EDX, game_over_msg
+    CALL PrintString
+    MOV EAX, score
+    CALL PrintDecimal
+    INVOKE ExitProcess, 0
+main ENDP
+
+InitializeGame PROC
+    MOV bird_y, 10
+    MOV obstacle_x, 50
+    MOV gap_y, 5
+    MOV score, 0
+    MOV game_over, 0
+    RET
+InitializeGame ENDP
+
+DrawScreen PROC
+    LEA EDX, space_char
+    MOV ECX, 1000
+DrawLoop:
+    CALL PrintChar
+    LOOP DrawLoop
+
+    MOV DL, 5
+    CALL PrintChar
+    MOV EDX, OFFSET bird_char
+    CALL PrintString
+
+    MOV EAX, obstacle_x
+    CMP EAX, 0
+    JL SkipObstacle
+    MOV ECX, screen_height
+DrawObstacle:
+    MOV AL, obstacle_char
+    MOV DL, AL
+    CALL PrintChar
+    LOOP DrawObstacle
+SkipObstacle:
+    LEA EDX, score_label
+    CALL PrintString
+    MOV EAX, score
+    CALL PrintDecimal
+    RET
+DrawScreen ENDP
+
+UpdateObstacle PROC
+    DEC obstacle_x
+    CMP obstacle_x, 0
+    JGE NoResetObstacle
+    MOV obstacle_x, 50
+    MOV EAX, 10
+    MOV gap_y, EAX
+    INC score
+NoResetObstacle:
+    RET
+UpdateObstacle ENDP
+
+CheckCollision PROC
+    CMP bird_y, 0
+    JL EndGameFlag
+    CMP bird_y, screen_height
+    JG EndGameFlag
+    CMP obstacle_x, 5
+    JNE SkipCollision
+    MOV EAX, gap_y
+    ADD EAX, obstacle_gap
+    CMP bird_y, EAX
+    JLE SkipCollision
+EndGameFlag:
+    MOV game_over, 1
+SkipCollision:
+    RET
+CheckCollision ENDP
+
+Delay PROC
+    MOV ECX, 5000
+DelayLoop:
+    LOOP DelayLoop
+    RET
+Delay ENDP
+
+PrintChar PROC
+    MOV AH, 2
+    INT 21H
+    RET
+PrintChar ENDP
+
+PrintString PROC
+    MOV AH, 9
+    INT 21H
+    RET
+PrintString ENDP
+
+PrintDecimal PROC
+    ; 顯示數字的邏輯
+    RET
+PrintDecimal ENDP
+
+END main
