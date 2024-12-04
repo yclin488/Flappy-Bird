@@ -1,0 +1,192 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <conio.h>
+#include <windows.h>
+
+#define SCREEN_WIDTH 50
+#define SCREEN_HEIGHT 20
+#define OBSTACLE_GAP 6
+#define INITIAL_SPEED 100
+#define MAX_OBSTACLES 3 // 最大障礙物數量
+
+int birdY, score, highScore, gameSpeed, gameOver;
+int obstacleX[MAX_OBSTACLES], obstacleGapY[MAX_OBSTACLES], obstacleWidth[MAX_OBSTACLES];
+
+// 節點結構
+struct Node {
+    int score;
+    struct Node* left;
+    struct Node* right;
+};
+
+// 建立新節點
+struct Node* create_node(int score) {
+    struct Node* newNode = (struct Node*)malloc(sizeof(struct Node));
+    newNode->score = score;
+    newNode->left = newNode->right = NULL;
+    return newNode;
+}
+
+// 插入分數到 BST
+struct Node* insert(struct Node* root, int score) {
+    if (root == NULL) {
+        return create_node(score);
+    }
+    if (score < root->score) {
+        root->left = insert(root->left, score);
+    } else {
+        root->right = insert(root->right, score);
+    }
+    return root;
+}
+
+// 中序遍歷輸出所有分數
+void inorder(struct Node* root) {
+    if (root != NULL) {
+        inorder(root->left);
+        printf("%d ", root->score);
+        inorder(root->right);
+    }
+}
+
+// 隱藏滑鼠指標
+void hide_cursor() {
+    CONSOLE_CURSOR_INFO cursorInfo;
+    cursorInfo.bVisible = FALSE;
+    cursorInfo.dwSize = 1;
+    SetConsoleCursorInfo(GetStdHandle(STD_OUTPUT_HANDLE), &cursorInfo);
+}
+
+// 清除畫面
+void clear_screen() {
+    COORD coord = {0, 0};
+    SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), coord);
+}
+
+void initialize_game() {
+    birdY = SCREEN_HEIGHT / 2;
+    score = 0;
+    gameSpeed = INITIAL_SPEED;
+    gameOver = 0;
+    for (int i = 0; i < MAX_OBSTACLES; i++) {
+        obstacleX[i] = SCREEN_WIDTH + i * (SCREEN_WIDTH / MAX_OBSTACLES);
+        obstacleGapY[i] = rand() % (SCREEN_HEIGHT - OBSTACLE_GAP - 4) + 2;
+        obstacleWidth[i] = 3 + rand() % 4;
+    }
+}
+
+void draw_screen() {
+    clear_screen();
+    for (int y = 0; y < SCREEN_HEIGHT; y++) {
+        for (int x = 0; x < SCREEN_WIDTH; x++) {
+            if (x == 5 && y == birdY) {
+                printf("-'o'-"); // 小鳥
+                x += 4;
+            } else {
+                int isObstacle = 0;
+                for (int i = 0; i < MAX_OBSTACLES; i++) {
+                    if (x >= obstacleX[i] && x < obstacleX[i] + obstacleWidth[i]) {
+                        if (y == obstacleGapY[i] - 2 || y == obstacleGapY[i] + OBSTACLE_GAP + 1) {
+                            printf("="); // 水管邊緣
+                        } else if ((y < obstacleGapY[i] - 2) || (y > obstacleGapY[i] + OBSTACLE_GAP + 1)) {
+                            printf("|"); // 水管主體
+                        } else {
+                            printf(" ");
+                        }
+                        isObstacle = 1;
+                        break;
+                    }
+                }
+                if (!isObstacle) {
+                    printf(" "); // 背景
+                }
+            }
+        }
+        printf("\n");
+    }
+    printf("Score: %d  High Score: %d\n", score, highScore);
+}
+
+void update_bird_position(int keyPressed) {
+    if (keyPressed) birdY--;
+    else birdY++;
+}
+
+void update_obstacles() {
+    for (int i = 0; i < MAX_OBSTACLES; i++) {
+        obstacleX[i]--;
+        if (obstacleX[i] < 0) {
+            obstacleX[i] = SCREEN_WIDTH;
+            obstacleGapY[i] = rand() % (SCREEN_HEIGHT - OBSTACLE_GAP - 4) + 2;
+            obstacleWidth[i] = 3 + rand() % 4;
+            score++;
+            if (gameSpeed > 30) {
+                gameSpeed -= 5;
+            }
+        }
+        if (obstacleX[i] <= 5 && obstacleX[i] + obstacleWidth[i] > 5 &&
+            (birdY < obstacleGapY[i] - 2 || birdY > obstacleGapY[i] + OBSTACLE_GAP + 1)) {
+            gameOver = 1; // 撞到障礙物，直接結束遊戲
+        }
+    }
+}
+
+void check_collision() {
+    if (birdY < 0 || birdY >= SCREEN_HEIGHT) {
+        gameOver = 1; // 撞到邊界，直接結束遊戲
+    }
+}
+
+void game_loop() {
+    int keyPressed = 0;
+    while (!gameOver) {
+        if (_kbhit()) {
+            char key = _getch();
+            if (key == ' ') keyPressed = 1;
+        } else {
+            keyPressed = 0;
+        }
+        update_bird_position(keyPressed);
+        update_obstacles();
+        check_collision();
+        draw_screen();
+        Sleep(gameSpeed);
+    }
+    if (score > highScore) {
+        highScore = score;
+    }
+    printf("Game Over! Final Score: %d\n", score);
+}
+
+int main() {
+    char choice;
+    struct Node* root = NULL; // 初始化 BST
+
+    hide_cursor();
+    highScore = 0;
+
+    do {
+        initialize_game();
+        draw_screen();
+        game_loop();
+
+        // 將分數插入 BST
+        root = insert(root, score);
+
+        printf("\nAll Scores (Sorted): ");
+        inorder(root);
+        printf("\n");
+
+        printf("Do you want to play again? (y/n): ");
+        choice = _getch();
+        printf("\n");
+    } while (choice == 'y' || choice == 'Y');
+
+    // 遊戲結束後顯示最終成績
+    printf("\nThank you for playing!\n");
+    printf("Final Scores (Sorted): ");
+    inorder(root); // 最終分數排序輸出
+    printf("\n");
+
+    return 0;
+}
