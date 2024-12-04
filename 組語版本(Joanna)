@@ -1,0 +1,121 @@
+.386                          ; 使用 386 指令集
+.model flat, stdcall          ; 扁平記憶體模型，標準呼叫協定
+.stack 4096                   ; 定義堆疊大小
+
+INCLUDE Windows.inc           ; 匯入 Windows 常量和結構
+INCLUDELIB Kernel32.lib       ; 匯入 Kernel32.lib (含 ExitProcess)
+
+.data                          ; 資料段
+bird_x     dd 100             ; 鳥的初始水平位置
+bird_y     dd 200             ; 鳥的初始垂直位置
+velocity   dd 0.0             ; 垂直速度
+gravity    dd 0.5             ; 重力加速度
+jumpForce  dd -8.0            ; 跳躍力
+
+pipe_x     dd 300             ; 第一根管道的水平位置
+pipe_gap   dd 100             ; 上下管道之間的間隙
+pipe_speed dd 2               ; 管道移動速度
+
+score      dd 0               ; 分數
+state      dd 0               ; 遊戲狀態: 0-開始前, 1-進行中, 2-結束
+screen_width  dd 640          ; 屏幕寬度
+screen_height dd 480          ; 屏幕高度
+
+DwExitCode dd 0               ; 程式退出碼 (DWORD)
+
+.code                          ; 程式碼段
+main PROC                     ; 主程式入口
+    ; 初始化遊戲
+    call InitGame
+
+GameLoop:
+    call UpdateGame            ; 更新遊戲邏輯
+    call RenderGame            ; 繪製畫面
+    call HandleInput           ; 處理輸入
+
+    ; 檢查是否結束遊戲
+    cmp dword ptr state, 2     ; 如果 state 為 2 (遊戲結束)
+    je EndGame
+
+    jmp GameLoop               ; 繼續遊戲迴圈
+
+EndGame:
+    mov DwExitCode, 0          ; 設定退出碼為 0
+    INVOKE ExitProcess, DwExitCode ; 使用 INVOKE 語法退出程式
+
+main ENDP
+
+; 初始化遊戲
+InitGame PROC
+    mov dword ptr state, 0     ; 設定遊戲為開始狀態
+    mov dword ptr bird_x, 100  ; 初始化鳥的位置
+    mov dword ptr bird_y, 200
+    mov dword ptr velocity, 0  ; 初始化速度
+    mov dword ptr pipe_x, 300  ; 初始化管道位置
+    mov dword ptr score, 0     ; 初始化分數
+    ret
+InitGame ENDP
+
+; 更新遊戲邏輯
+UpdateGame PROC
+    cmp dword ptr state, 1     ; 檢查遊戲是否進行中
+    jne UpdateGameEnd
+
+    ; 更新鳥的垂直運動
+    fld dword ptr velocity     ; 加載 velocity
+    fld dword ptr gravity      ; 加載 gravity
+    fadd                       ; velocity += gravity
+    fstp dword ptr velocity    ; 儲存回 velocity
+
+    fld dword ptr bird_y       ; 加載 bird_y
+    fld dword ptr velocity     ; 加載 velocity
+    fadd                       ; bird_y += velocity
+    fstp dword ptr bird_y      ; 儲存回 bird_y
+
+    ; 更新管道位置
+    mov eax, dword ptr pipe_x
+    sub eax, dword ptr pipe_speed ; pipe_x -= pipe_speed
+    mov dword ptr pipe_x, eax
+
+    ; 檢查管道是否越界
+    cmp eax, 0
+    jg NoResetPipe
+    mov dword ptr pipe_x, 640   ; 重置管道到屏幕右邊
+    add dword ptr score, 1      ; 增加分數
+NoResetPipe:
+
+    ; 檢查鳥是否超出屏幕範圍 (模擬遊戲結束)
+    mov eax, dword ptr bird_y
+    cmp eax, screen_height
+    jl UpdateGameEnd
+    mov dword ptr state, 2      ; 設定遊戲為結束狀態
+
+UpdateGameEnd:
+    ret
+UpdateGame ENDP
+
+; 處理輸入 (模擬玩家點擊跳躍)
+HandleInput PROC
+    ; 假設輸入是從某個 API 或硬體事件中檢查 (這裡簡化為固定跳躍)
+    cmp dword ptr state, 0     ; 如果是開始前，啟動遊戲
+    jne CheckForJump
+    mov dword ptr state, 1     ; 切換到遊戲進行中
+    ret
+CheckForJump:
+    ; 如果按下跳躍鍵 (假設通過某個標誌位模擬)
+    mov eax, 1                 ; 假設讀取鍵盤事件，模擬跳躍
+    cmp eax, 1
+    jne NoJump
+    mov eax, dword ptr jumpForce ; 將 jumpForce 載入 EAX
+    mov dword ptr velocity, eax ; 將 EAX 的值存入 velocity
+NoJump:
+    ret
+HandleInput ENDP
+
+; 繪製畫面 (僅示意，實際需要呼叫繪圖函數)
+RenderGame PROC
+    ; 繪製鳥和管道 (需要依賴圖形 API，如 DirectX 或 Windows GDI)
+    ret
+RenderGame ENDP
+
+END main
