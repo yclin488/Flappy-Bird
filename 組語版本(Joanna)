@@ -119,3 +119,8 @@ RenderGame PROC
 RenderGame ENDP
 
 END main
+
+;初步看程式碼無錯誤，看起來是 MASM32 SDK的問題。好像可以按照這樣試試看(確保 MASM32 SDK 已安裝。
+配置專案屬性中的路徑。
+修改程式碼中浮點數初始化。
+按下 Ctrl + Shift + B 編譯專案。)
