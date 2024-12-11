@@ -2,8 +2,11 @@
 .model flat, stdcall          ; 扁平記憶體模型，標準呼叫協定
 .stack 4096                   ; 定義堆疊大小
 
-INCLUDE Windows.inc           ; 匯入 Windows 常量和結構
-INCLUDELIB Kernel32.lib       ; 匯入 Kernel32.lib (含 ExitProcess)
+EXTERN ExitProcess:PROC       ; 匯入 ExitProcess 函數
+
+; 定義常量
+WM_QUIT equ 0x0012
+MB_OK   equ 0x00000000h
 
 .data                          ; 資料段
 bird_x     dd 100             ; 鳥的初始水平位置
@@ -119,8 +122,3 @@ RenderGame PROC
 RenderGame ENDP
 
 END main
-
-;初步看程式碼無錯誤，看起來是 MASM32 SDK的問題。好像可以按照這樣試試看(確保 MASM32 SDK 已安裝。
-配置專案屬性中的路徑。
-修改程式碼中浮點數初始化。
-按下 Ctrl + Shift + B 編譯專案。)
