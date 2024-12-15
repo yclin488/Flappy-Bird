@@ -1,0 +1,231 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <conio.h>
+#include <windows.h>
+
+#define SCREEN_WIDTH 50
+#define SCREEN_HEIGHT 20
+#define OBSTACLE_GAP 6
+#define INITIAL_SPEED 100
+
+//412262656 林彥辰
+//412262668 吳采凌
+
+// 定義障礙物結構
+struct Obstacle {
+    int x;
+    int gapY;
+    int width;
+};
+
+// 定義佇列節點
+struct QueueNode {
+    struct Obstacle obstacle;
+    struct QueueNode* next;
+};
+
+// 定義佇列
+struct Queue {
+    struct QueueNode* front;
+    struct QueueNode* rear;
+};
+
+// 定義二元搜尋樹節點
+struct BSTNode {
+    int score;
+    struct BSTNode* left;
+    struct BSTNode* right;
+};
+
+// 初始化佇列
+struct Queue* initialize_queue() {
+    struct Queue* q = (struct Queue*)malloc(sizeof(struct Queue));
+    q->front = q->rear = NULL;
+    return q;
+}
+
+// 入隊
+void enqueue(struct Queue* q, struct Obstacle obs) {
+    struct QueueNode* temp = (struct QueueNode*)malloc(sizeof(struct QueueNode));
+    temp->obstacle = obs;
+    temp->next = NULL;
+    if (q->rear == NULL) {
+        q->front = q->rear = temp;
+        return;
+    }
+    q->rear->next = temp;
+    q->rear = temp;
+}
+
+// 出隊
+struct Obstacle dequeue(struct Queue* q) {
+    if (q->front == NULL) {
+        struct Obstacle empty = {-1, -1, -1};
+        return empty;
+    }
+    struct QueueNode* temp = q->front;
+    struct Obstacle obs = temp->obstacle;
+    q->front = q->front->next;
+    if (q->front == NULL) q->rear = NULL;
+    free(temp);
+    return obs;
+}
+
+// 建立新 BST 節點
+struct BSTNode* create_bst_node(int score) {
+    struct BSTNode* newNode = (struct BSTNode*)malloc(sizeof(struct BSTNode));
+    newNode->score = score;
+    newNode->left = newNode->right = NULL;
+    return newNode;
+}
+
+// 插入分數到 BST
+struct BSTNode* insert_bst(struct BSTNode* root, int score) {
+    if (root == NULL) {
+        return create_bst_node(score);
+    }
+    if (score < root->score) {
+        root->left = insert_bst(root->left, score);
+    } else {
+        root->right = insert_bst(root->right, score);
+    }
+    return root;
+}
+
+// 中序遍歷輸出 BST
+void inorder_bst(struct BSTNode* root) {
+    if (root != NULL) {
+        inorder_bst(root->left);
+        printf("%d ", root->score);
+        inorder_bst(root->right);
+    }
+}
+
+// 隱藏游標
+void hide_cursor() {
+    CONSOLE_CURSOR_INFO cursorInfo;
+    cursorInfo.bVisible = FALSE;
+    cursorInfo.dwSize = 1;
+    SetConsoleCursorInfo(GetStdHandle(STD_OUTPUT_HANDLE), &cursorInfo);
+}
+
+// 清除畫面
+void clear_screen() {
+    COORD coord = {0, 0};
+    SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), coord);
+}
+
+// 初始化遊戲
+void initialize_game(struct Queue* obstacleQueue) {
+    for (int i = 0; i < 3; i++) {
+        struct Obstacle obs = {SCREEN_WIDTH + i * 20, rand() % (SCREEN_HEIGHT - OBSTACLE_GAP - 4) + 2, 3 + rand() % 4};
+        enqueue(obstacleQueue, obs);
+    }
+}
+
+// 繪製畫面
+void draw_screen(struct Queue* obstacleQueue, int birdY, int score) {
+    clear_screen();
+    for (int y = 0; y < SCREEN_HEIGHT; y++) {
+        for (int x = 0; x < SCREEN_WIDTH; x++) {
+            if (x == 5 && y == birdY) {
+                printf("-'o'-");
+                x += 4;
+            } else {
+                int isObstacle = 0;
+                struct QueueNode* temp = obstacleQueue->front;
+                while (temp != NULL) {
+                    struct Obstacle obs = temp->obstacle;
+                    if (x >= obs.x && x < obs.x + obs.width) {
+                        if (y == obs.gapY - 1 || y == obs.gapY + OBSTACLE_GAP) {
+                            printf("=");
+                        } else if (y < obs.gapY || y > obs.gapY + OBSTACLE_GAP) {
+                            printf("|");
+                        } else {
+                            printf(" ");
+                        }
+                        isObstacle = 1;
+                        break;
+                    }
+                    temp = temp->next;
+                }
+                if (!isObstacle) printf(" ");
+            }
+        }
+        printf("\n");
+    }
+    printf("Score: %d\n", score);
+}
+
+// 更新障礙物
+void update_obstacles(struct Queue* obstacleQueue, int* score, int* gameOver, int birdY) {
+    struct QueueNode* temp = obstacleQueue->front;
+    while (temp != NULL) {
+        temp->obstacle.x--;
+        if (temp->obstacle.x < 0) {
+            dequeue(obstacleQueue);
+            struct Obstacle newObs = {SCREEN_WIDTH, rand() % (SCREEN_HEIGHT - OBSTACLE_GAP - 4) + 2, 3 + rand() % 4};
+            enqueue(obstacleQueue, newObs);
+            (*score)++;
+        }
+        if (temp->obstacle.x == 5 && (birdY < temp->obstacle.gapY || birdY > temp->obstacle.gapY + OBSTACLE_GAP)) {
+            *gameOver = 1;
+        }
+        temp = temp->next;
+    }
+}
+
+// 遊戲邏輯循環
+int game_loop(struct Queue* obstacleQueue) {
+    int birdY = SCREEN_HEIGHT / 2;
+    int score = 0;
+    int gameOver = 0;
+    int gameSpeed = INITIAL_SPEED;
+
+    while (!gameOver) {
+        if (_kbhit()) {
+            char key = _getch();
+            if (key == ' ') birdY--;
+        } else {
+            birdY++;
+        }
+
+        if (birdY < 0 || birdY >= SCREEN_HEIGHT) {
+            gameOver = 1;
+        }
+
+        update_obstacles(obstacleQueue, &score, &gameOver, birdY);
+        draw_screen(obstacleQueue, birdY, score);
+        Sleep(gameSpeed);
+    }
+    printf("Game Over! Final Score: %d\n", score);
+    return score;
+}
+
+int main() {
+    struct Queue* obstacleQueue = initialize_queue();
+    struct BSTNode* bstRoot = NULL;
+    hide_cursor();
+
+    char choice;
+    do {
+        initialize_game(obstacleQueue);
+        int finalScore = game_loop(obstacleQueue);
+        bstRoot = insert_bst(bstRoot, finalScore);
+
+        printf("\nAll Scores (Sorted): ");
+        inorder_bst(bstRoot);
+        printf("\n");
+
+        printf("Do you want to play again? (y/n): ");
+        choice = _getch();
+        printf("\n");
+    } while (choice == 'y' || choice == 'Y');
+
+    printf("\nThank you for playing!\n");
+    printf("Final Scores (Sorted): ");
+    inorder_bst(bstRoot);
+    printf("\n");
+
+    return 0;
+}
