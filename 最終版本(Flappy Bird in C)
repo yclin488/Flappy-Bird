@@ -1,3 +1,5 @@
+//412262656 林彥辰
+//412262668 吳采凌
 #include <stdio.h>
 #include <stdlib.h>
 #include <conio.h>
@@ -7,9 +9,6 @@
 #define SCREEN_HEIGHT 20
 #define OBSTACLE_GAP 6
 #define INITIAL_SPEED 100
-
-//412262656 林彥辰
-//412262668 吳采凌
 
 // 定義障礙物結構
 struct Obstacle {
