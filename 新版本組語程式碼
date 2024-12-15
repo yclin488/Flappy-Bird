@@ -1,3 +1,7 @@
+;412262656 林彥辰  
+
+;412262668 吳采凌 
+
 ; FlappyBirdGame.asm - Flappy Bird-like game in MASM
 .386
 .model flat, stdcall
