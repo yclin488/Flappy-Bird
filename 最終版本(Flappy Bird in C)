@@ -44,7 +44,7 @@ struct Queue* initialize_queue() {
     return q;
 }
 
-// 入隊
+// 從佇列尾端存入資料(入隊)
 void enqueue(struct Queue* q, struct Obstacle obs) {
     struct QueueNode* temp = (struct QueueNode*)malloc(sizeof(struct QueueNode));
     temp->obstacle = obs;
@@ -57,7 +57,7 @@ void enqueue(struct Queue* q, struct Obstacle obs) {
     q->rear = temp;
 }
 
-// 出隊
+// 從佇列前端移除資料(出隊)
 struct Obstacle dequeue(struct Queue* q) {
     if (q->front == NULL) {
         struct Obstacle empty = {-1, -1, -1};
