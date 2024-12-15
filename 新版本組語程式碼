@@ -1,0 +1,149 @@
+.386
+.model flat, stdcall
+.stack 4096
+
+; 定義 Windows API 函數
+ExitProcess proto, dwExitCode:dword
+GetStdHandle proto, nStdHandle:dword
+WriteConsoleA proto, hConsole:dword, lpBuffer:ptr byte, nNumberOfCharsToWrite:dword, lpNumberOfCharsWritten:ptr dword, lpReserved:dword
+SetConsoleCursorPosition proto, hConsole:dword, dwCursorPosition:dword
+Sleep proto, dwMilliseconds:dword
+GetAsyncKeyState proto, vKey:dword
+
+; 定義 HANDLE 類型
+HANDLE typedef DWORD
+
+.const
+    SCREEN_WIDTH EQU 50
+    SCREEN_HEIGHT EQU 20
+    OBSTACLE_GAP EQU 6
+    INITIAL_SPEED EQU 100
+    STD_OUTPUT_HANDLE EQU -11
+    VK_SPACE EQU 20h
+
+.data
+    ; 遊戲相關變數
+    birdY DWORD SCREEN_HEIGHT / 2
+    score DWORD 0
+    gameOver DWORD 0
+    gameSpeed DWORD INITIAL_SPEED
+
+    ; 障礙物佇列
+    obstacleQueue DWORD SCREEN_WIDTH DUP(0) ; 最大障礙數量
+
+    ; Windows API 相關
+    hConsole HANDLE ?
+    buffer BYTE 128 DUP(?)
+
+    msgGameOver BYTE "Game Over! Final Score: ", 0
+    msgScore BYTE "Score: ", 0
+    msgPlayAgain BYTE "Do you want to play again? (y/n): ", 0
+    msgThankYou BYTE "Thank you for playing!", 0
+
+.code
+main PROC
+    ; 初始化
+    call InitializeConsole
+    call InitializeGame
+
+    ; 遊戲主迴圈
+GameLoop:
+    cmp gameOver, 1
+    je EndGame
+
+    ; 讀取玩家輸入
+    call ProcessInput
+
+    ; 更新遊戲邏輯
+    call UpdateObstacles
+
+    ; 繪製畫面
+    call DrawScreen
+
+    ; 延遲以控制遊戲速度
+    push gameSpeed
+    call Sleep
+
+    ; 重複遊戲邏輯
+    jmp GameLoop
+
+EndGame:
+    ; 輸出 "Game Over" 訊息
+    push OFFSET msgGameOver
+    push hConsole
+    call WriteConsoleString
+    mov eax, score
+    push eax
+    push hConsole
+    call WriteConsoleNumber
+
+    ; 提示是否重新開始
+    push OFFSET msgPlayAgain
+    push hConsole
+    call WriteConsoleString
+
+    ret
+
+InitializeConsole PROC
+    ; 初始化控制台
+    push STD_OUTPUT_HANDLE
+    call GetStdHandle
+    mov hConsole, eax
+    ret
+InitializeConsole ENDP
+
+InitializeGame PROC
+    ; 初始化遊戲變數
+    mov birdY, SCREEN_HEIGHT / 2
+    mov score, 0
+    mov gameOver, 0
+    ret
+InitializeGame ENDP
+
+ProcessInput PROC
+    ; 檢查空白鍵是否被按下
+    push VK_SPACE
+    call GetAsyncKeyState
+    test ax, 8000h
+    jz NoJump
+    sub birdY, 1
+NoJump:
+    add birdY, 1
+    ret
+ProcessInput ENDP
+
+UpdateObstacles PROC
+    ; TODO: 更新障礙物邏輯
+    ret
+UpdateObstacles ENDP
+
+DrawScreen PROC
+    ; 清除螢幕
+    call ClearScreen
+
+    ; TODO: 繪製角色與障礙物
+    ret
+DrawScreen ENDP
+
+ClearScreen PROC
+    ; TODO: 使用 SetConsoleCursorPosition 清除畫面
+    ret
+ClearScreen ENDP
+
+WriteConsoleString PROC
+    ; 輸出字串
+    ; hConsole, OFFSET string
+    push 0
+    push dword ptr [esp+8] ; 字串地址
+    push -1
+    push dword ptr [esp+12] ; hConsole
+    call WriteConsoleA
+    ret
+WriteConsoleString ENDP
+
+WriteConsoleNumber PROC
+    ; TODO: 將數字轉字串並輸出
+    ret
+WriteConsoleNumber ENDP
+
+END main
